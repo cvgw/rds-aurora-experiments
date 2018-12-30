@@ -9,7 +9,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	waitSleepTime = 10
+	requiredReady = 4
+)
+
 func WaitForClusterReady(ctx context.Context, svc *rds.RDS, cluster *rds.DBCluster) bool {
+	var readyCount int
+
 	clusterIdentifier := cluster.DBClusterIdentifier
 	for {
 		select {
@@ -37,18 +44,28 @@ func WaitForClusterReady(ctx context.Context, svc *rds.RDS, cluster *rds.DBClust
 			}
 
 			if *dbCluster.Status == "available" {
-				log.Info("cluster ready")
+				log.Infof("cluster ready test %d/%d", readyCount+1, requiredReady)
+				readyCount++
+			} else {
+				readyCount = 0
+				log.Infof("cluster not ready: status %s", *dbCluster.Status)
+			}
+
+			if readyCount == requiredReady {
+				log.Info("cluster ready and stable")
 				return true
 			}
 
-			log.Infof("cluster not ready: status %s", *dbCluster.Status)
-			time.Sleep(30 * time.Second)
+			time.Sleep(waitSleepTime * time.Second)
 		}
 	}
 }
 
 func WaitForInstanceReady(ctx context.Context, svc *rds.RDS, instance *rds.DBInstance) bool {
+	var readyCount int
+
 	identifier := instance.DBInstanceIdentifier
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -57,30 +74,23 @@ func WaitForInstanceReady(ctx context.Context, svc *rds.RDS, instance *rds.DBIns
 		default:
 			instance, err := findDBClusterInstance(svc, identifier)
 			if err != nil {
-				if aerr, ok := err.(awserr.Error); ok {
-					switch aerr.Code() {
-					case rds.ErrCodeDBInstanceNotFoundFault:
-						log.Info(rds.ErrCodeDBInstanceNotFoundFault, aerr.Error())
-						return false
-					default:
-						log.Warn(aerr.Error())
-						return false
-					}
-				} else {
-					// Print the error, cast err to awserr.Error to get the Code and
-					// Message from an error.
-					log.Warn(err.Error())
-					return false
-				}
+				return false
 			}
 
 			if *instance.DBInstanceStatus == "available" {
-				log.Info("instance ready")
+				log.Infof("instance ready test %d/%d", readyCount+1, requiredReady)
+				readyCount++
+			} else {
+				readyCount = 0
+				log.Infof("instance not ready: status %s", *instance.DBInstanceStatus)
+			}
+
+			if readyCount == requiredReady {
+				log.Info("instance ready and stable")
 				return true
 			}
 
-			log.Infof("instance not ready: status %s", *instance.DBInstanceStatus)
-			time.Sleep(30 * time.Second)
+			time.Sleep(waitSleepTime * time.Second)
 		}
 	}
 }

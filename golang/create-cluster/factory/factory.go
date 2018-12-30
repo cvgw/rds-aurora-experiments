@@ -1,11 +1,21 @@
 package factory
 
 import (
+	"errors"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/rds"
 	log "github.com/sirupsen/logrus"
 )
+
+var (
+	notFoundErr error
+)
+
+func init() {
+	notFoundErr = errors.New("not found")
+}
 
 func UpdateOrCreateDBSubnetGroup(svc *rds.RDS, groupName, groupDescription string, subnets []string) (*rds.DBSubnetGroup, error) {
 	var subnetGroup *rds.DBSubnetGroup
@@ -104,7 +114,21 @@ func findDBClusterInstance(svc *rds.RDS, instanceIdentifier *string) (*rds.DBIns
 
 	descInstancesOuput, err := svc.DescribeDBInstances(descInstancesInput)
 	if err != nil {
-		return nil, err
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case rds.ErrCodeDBInstanceNotFoundFault:
+				log.Info(rds.ErrCodeDBInstanceNotFoundFault, aerr.Error())
+				return nil, notFoundErr
+			default:
+				log.Warn(aerr.Error())
+				return nil, aerr
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			log.Warn(err.Error())
+			return nil, err
+		}
 	}
 
 	return descInstancesOuput.DBInstances[0], nil

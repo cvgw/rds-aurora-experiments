@@ -143,12 +143,16 @@ func (f *dbClusterFactory) updateDBCluster(svc *rds.RDS, dbCluster *rds.DBCluste
 	input := &rds.ModifyDBClusterInput{
 		ApplyImmediately:    aws.Bool(true),
 		DBClusterIdentifier: dbCluster.DBClusterIdentifier,
-		MasterUserPassword:  f.masterUserPass,
+		//MasterUserPassword:  f.masterUserPass,
 		VpcSecurityGroupIds: f.securityGroupIds,
 	}
 
 	if *dbCluster.EngineVersion != *f.engineVersion {
 		input.EngineVersion = f.engineVersion
+	}
+
+	if f.masterUserPass != nil && *f.masterUserPass != "" {
+		input.MasterUserPassword = f.masterUserPass
 	}
 
 	result, err := svc.ModifyDBCluster(input)
