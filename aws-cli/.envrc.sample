@@ -1,0 +1,16 @@
+export AWS_PROFILE=
+export AWS_DEFAULT_REGION=
+export INSTANCE_ID=
+export CLUSTER_ID=
+export ENGINE=
+export INSTANCE_CLASS=
+export DESCRIPTION=
+export SUBNET_IDS=
+export ENGINE=
+export ENGINE_VERSION=
+export CLUSTER_ID=
+export MASTER_USER_NAME=
+export MASTER_USER_PASSWORD=
+export SUBNET_GROUP_NAME=
+export SG_IDS=
+

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ -z "$SUBNET_GROUP_NAME" ]; then
+  echo SUBNET_GROUP_NAME cannot be blank
+  exit 1
+fi
+
+if [ -z "$DESCRIPTION" ]; then
+  echo DESCRIPTION cannot be blank
+  exit 1
+fi
+
+if [ -z "$SUBNET_IDS" ]; then
+  echo SUBNET_IDS cannot be blank
+  exit 1
+fi
+
+aws rds create-db-subnet-group \
+  --db-subnet-group-name $SUBNET_GROUP_NAME \
+  --db-subnet-group-description "$DESCRIPTION" \
+  --subnet-ids $SUBNET_IDS

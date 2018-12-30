@@ -1,0 +1,27 @@
+#!/bin/bash
+
+if [ -z "$INSTANCE_ID" ]; then
+  echo INSTANCE_ID cannot be blank
+  exit 1
+fi
+
+if [ -z "$CLUSTER_ID" ]; then
+  echo CLUSTER_ID cannot be blank
+  exit 1
+fi
+
+if [ -z "$ENGINE" ]; then
+  echo ENGINE cannot be blank
+  exit 1
+fi
+
+if [ -z "$INSTANCE_CLASS" ]; then
+  echo INSTANCE_CLASS cannot be blank
+  exit 1
+fi
+
+aws rds create-db-instance \
+  --db-instance-identifier $INSTANCE_ID \
+  --db-cluster-identifier $CLUSTER_ID \
+  --engine $ENGINE \
+  --db-instance-class $INSTANCE_CLASS

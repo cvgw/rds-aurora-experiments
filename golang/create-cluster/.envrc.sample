@@ -1,0 +1,21 @@
+export ENGINE=aurora-mysql
+export ENGINE_VERSION=5.7.12
+export READY_TIMEOUT_MINUTES=5
+export INSTANCE_CLASS=db.t2.small
+
+export AWS_REGION=
+export AWS_PROFILE=
+
+export SUBNET_GROUP_DESCRIPTION=
+export SUBNET_GROUP_NAME=
+
+export MASTER_USERNAME=
+export MASTER_USER_PASSWORD=
+export CLUSTER_ID=
+
+export INSTANCE_ID=
+
+export SECURITY_GROUP_IDS=
+
+export SUBNETS=
+

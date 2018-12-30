@@ -1,0 +1,45 @@
+#!/bin/bash
+
+if [ -z "$ENGINE" ]; then
+  echo ENGINE cannot be blank
+  exit 1
+fi
+
+if [ -z "$ENGINE_VERSION" ]; then
+  echo ENGINE_VERSION cannot be blank
+  exit 1
+fi
+
+if [ -z "$CLUSTER_ID" ]; then
+  echo CLUSTER_ID cannot be blank
+  exit 1
+fi
+
+if [ -z "$MASTER_USER_NAME" ]; then
+  echo MASTER_USER_NAME cannot be blank
+  exit 1
+fi
+
+if [ -z "$MASTER_USER_PASSWORD" ]; then
+  echo MASTER_USER_PASSWORD cannot be blank
+  exit 1
+fi
+
+if [ -z "$SUBNET_GROUP_NAME" ]; then
+  echo SUBNET_GROUP_NAME cannot be blank
+  exit 1
+fi
+
+if [ -z "$SG_IDS" ]; then
+  echo SG_IDS cannot be blank
+  exit 1
+fi
+
+aws rds create-db-cluster \
+  --db-cluster-identifier $CLUSTER_ID \
+  --engine $ENGINE \
+  --engine-version $ENGINE_VERSION \
+  --master-username $MASTER_USER_NAME \
+  --master-user-password $MASTER_USER_PASSWORD \
+  --db-subnet-group-name $SUBNET_GROUP_NAME \
+  --vpc-security-group-ids $SG_IDS
