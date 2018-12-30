@@ -7,7 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func FindOrCreateDBSubnetGroup(svc *rds.RDS, groupName, groupDescription string, subnets []string) (*rds.DBSubnetGroup, error) {
+func UpdateOrCreateDBSubnetGroup(svc *rds.RDS, groupName, groupDescription string, subnets []string) (*rds.DBSubnetGroup, error) {
 	var subnetGroup *rds.DBSubnetGroup
 
 	subnetGroupName := aws.String(groupName)

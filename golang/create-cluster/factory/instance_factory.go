@@ -26,7 +26,7 @@ type dbInstanceFactory struct {
 	instanceClass      *string
 }
 
-func (f *dbInstanceFactory) FindOrCreateDBClusterInstance(svc *rds.RDS) (*rds.DBInstance, error) {
+func (f *dbInstanceFactory) UpdateOrCreateDBClusterInstance(svc *rds.RDS) (*rds.DBInstance, error) {
 
 	instance, err := findDBClusterInstance(svc, f.instanceIdentifier)
 	if err != nil {

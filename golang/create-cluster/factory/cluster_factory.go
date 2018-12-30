@@ -37,7 +37,7 @@ func NewDBClusterFactory(input NewDBClusterFactoryInput) *dbClusterFactory {
 	return f
 }
 
-func (f *dbClusterFactory) FindOrCreateDBCluster(svc *rds.RDS) (*rds.DBCluster, error) {
+func (f *dbClusterFactory) UpdateOrCreateDBCluster(svc *rds.RDS) (*rds.DBCluster, error) {
 	dbCluster, err := findDBCluster(svc, f.clusterIdentifier)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
@@ -53,6 +53,55 @@ func (f *dbClusterFactory) FindOrCreateDBCluster(svc *rds.RDS) (*rds.DBCluster, 
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
 			log.Warn(err.Error())
+			return nil, err
+		}
+	}
+
+	dbCluster, err = f.updateDBCluster(svc, dbCluster)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case rds.ErrCodeDBClusterNotFoundFault:
+				log.Warn(rds.ErrCodeDBClusterNotFoundFault, aerr.Error())
+				return nil, aerr
+			case rds.ErrCodeInvalidDBClusterStateFault:
+				log.Warn(rds.ErrCodeInvalidDBClusterStateFault, aerr.Error())
+				return nil, aerr
+			case rds.ErrCodeStorageQuotaExceededFault:
+				log.Warn(rds.ErrCodeStorageQuotaExceededFault, aerr.Error())
+				return nil, aerr
+			case rds.ErrCodeDBSubnetGroupNotFoundFault:
+				log.Warn(rds.ErrCodeDBSubnetGroupNotFoundFault, aerr.Error())
+				return nil, aerr
+			case rds.ErrCodeInvalidVPCNetworkStateFault:
+				log.Warn(rds.ErrCodeInvalidVPCNetworkStateFault, aerr.Error())
+				return nil, aerr
+			case rds.ErrCodeInvalidDBSubnetGroupStateFault:
+				log.Warn(rds.ErrCodeInvalidDBSubnetGroupStateFault, aerr.Error())
+				return nil, aerr
+			case rds.ErrCodeInvalidSubnet:
+				log.Warn(rds.ErrCodeInvalidSubnet, aerr.Error())
+				return nil, aerr
+			case rds.ErrCodeDBClusterParameterGroupNotFoundFault:
+				log.Warn(rds.ErrCodeDBClusterParameterGroupNotFoundFault, aerr.Error())
+				return nil, aerr
+			case rds.ErrCodeInvalidDBSecurityGroupStateFault:
+				log.Warn(rds.ErrCodeInvalidDBSecurityGroupStateFault, aerr.Error())
+				return nil, aerr
+			case rds.ErrCodeInvalidDBInstanceStateFault:
+				log.Warn(rds.ErrCodeInvalidDBInstanceStateFault, aerr.Error())
+				return nil, aerr
+			case rds.ErrCodeDBClusterAlreadyExistsFault:
+				log.Warn(rds.ErrCodeDBClusterAlreadyExistsFault, aerr.Error())
+				return nil, aerr
+			default:
+				log.Warn(aerr.Error())
+				return nil, aerr
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			log.Warn(err)
 			return nil, err
 		}
 	}
@@ -88,4 +137,24 @@ func (f *dbClusterFactory) createDBCluster(svc *rds.RDS) (*rds.DBCluster, error)
 	}
 
 	return clusterOutput.DBCluster, nil
+}
+
+func (f *dbClusterFactory) updateDBCluster(svc *rds.RDS, dbCluster *rds.DBCluster) (*rds.DBCluster, error) {
+	input := &rds.ModifyDBClusterInput{
+		ApplyImmediately:    aws.Bool(true),
+		DBClusterIdentifier: dbCluster.DBClusterIdentifier,
+		MasterUserPassword:  f.masterUserPass,
+		VpcSecurityGroupIds: f.securityGroupIds,
+	}
+
+	if *dbCluster.EngineVersion != *f.engineVersion {
+		input.EngineVersion = f.engineVersion
+	}
+
+	result, err := svc.ModifyDBCluster(input)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.DBCluster, nil
 }

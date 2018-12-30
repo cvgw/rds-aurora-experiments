@@ -32,6 +32,57 @@ const (
 	subnetsVar          = "SUBNETS"
 )
 
+func newRDSSvc(profile, region string) *rds.RDS {
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		Config:  aws.Config{Region: aws.String(region)},
+		Profile: profile,
+	}))
+	return rds.New(sess)
+}
+
+func updateOrCreateCluster(svc *rds.RDS, input factory.NewDBClusterFactoryInput, rTimeout int) *rds.DBCluster {
+	clusterFactory := factory.NewDBClusterFactory(input)
+	cluster, err := clusterFactory.UpdateOrCreateDBCluster(svc)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Info(cluster)
+
+	func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(rTimeout)*time.Minute)
+		defer cancel()
+		ready := factory.WaitForClusterReady(ctx, svc, cluster)
+
+		if !ready {
+			log.Fatal("cluster not ready within timeout")
+		}
+	}()
+
+	return cluster
+}
+
+func updateOrCreateInstance(
+	svc *rds.RDS, cluster *rds.DBCluster, identifier, class string, rTimeout int,
+) *rds.DBInstance {
+	instanceFactory := factory.NewDBInstanceFactory(cluster, identifier, class)
+	instance, err := instanceFactory.UpdateOrCreateDBClusterInstance(svc)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Info(instance)
+
+	func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(rTimeout)*time.Minute)
+		defer cancel()
+		ready := factory.WaitForInstanceReady(ctx, svc, instance)
+		if !ready {
+			log.Fatal("instance not ready within timeout")
+		}
+	}()
+
+	return instance
+}
+
 func main() {
 	region := os.Getenv(awsRegionVar)
 	profile := os.Getenv(awsProfileVar)
@@ -55,13 +106,15 @@ func main() {
 		subnets = append(subnets, subnet)
 	}
 
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		Config:  aws.Config{Region: aws.String(region)},
-		Profile: profile,
-	}))
-	svc := rds.New(sess)
+	rTimeout, err := strconv.Atoi(readyTimeout)
+	if err != nil {
+		log.Warn(err)
+		rTimeout = 1
+	}
 
-	dbSubnetGroup, err := factory.FindOrCreateDBSubnetGroup(svc, groupName, groupDescription, subnets)
+	svc := newRDSSvc(profile, region)
+
+	dbSubnetGroup, err := factory.UpdateOrCreateDBSubnetGroup(svc, groupName, groupDescription, subnets)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -77,44 +130,9 @@ func main() {
 		SubnetGroupName:  dbSubnetGroup.DBSubnetGroupName,
 	}
 
-	clusterFactory := factory.NewDBClusterFactory(clusterFactoryInput)
-	cluster, err := clusterFactory.FindOrCreateDBCluster(svc)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Info(cluster)
+	cluster := updateOrCreateCluster(svc, clusterFactoryInput, rTimeout)
 
-	rTimeout, err := strconv.Atoi(readyTimeout)
-	if err != nil {
-		log.Warn(err)
-		rTimeout = 1
-	}
-
-	func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(rTimeout)*time.Minute)
-		defer cancel()
-		ready := factory.WaitForClusterReady(ctx, svc, cluster)
-
-		if !ready {
-			log.Fatal("cluster not ready within timeout")
-		}
-	}()
-
-	instanceFactory := factory.NewDBInstanceFactory(cluster, instanceIdentifier, instanceClass)
-	instance, err := instanceFactory.FindOrCreateDBClusterInstance(svc)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Info(instance)
-
-	func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(rTimeout)*time.Minute)
-		defer cancel()
-		ready := factory.WaitForInstanceReady(ctx, svc, instance)
-		if !ready {
-			log.Fatal("instance not ready within timeout")
-		}
-	}()
+	updateOrCreateInstance(svc, cluster, instanceIdentifier, instanceClass, rTimeout)
 
 	log.Info("success")
 }
